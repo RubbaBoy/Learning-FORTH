@@ -81,7 +81,7 @@ pack-size 1 swap lshift 1- constant pack-mask
     MAP-HEIGHT 0 DO
         MAP-WIDTH 0 DO
         dup
-        I J
+        J I
         get-map-addr-at C@ EMIT
         LOOP
         CR
@@ -118,7 +118,7 @@ pack-size 1 swap lshift 1- constant pack-mask
 
     MAP-HEIGHT 0 DO
         MAP-WIDTH 0 DO
-        CR
+        \ CR
 
         dup 0= IF
             ." Reached end of map on line " J . ." and column " I .
@@ -172,7 +172,6 @@ variable tmp-map-y
     consume-number -rot
     consume-number -rot
 
-    ." new map data: " .s CR
     new-map-data
 
     \ TODO: REMOVE
