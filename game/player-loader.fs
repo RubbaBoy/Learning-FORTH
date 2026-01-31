@@ -30,6 +30,7 @@ create player-img-data-buf 255 allot
 create raw-img-buf 255 allot
 variable raw-img-idx
 
+variable tmp-end-of-line
 variable tmp-finding-width
 variable tmp-height
 variable tmp-width
@@ -51,9 +52,10 @@ variable tmp-width
     \ 2dup dump
 
     \ reset
+    true tmp-end-of-line !
     true tmp-finding-width !
     1 tmp-height !
-    1 tmp-width !
+    0 tmp-width !
     0 raw-img-idx !
 
     player-img-data-buf
@@ -67,22 +69,31 @@ variable tmp-width
                 false tmp-finding-width !
             THEN
 
+            true tmp-end-of-line !
+
             \ increment height
             1 tmp-height +!
+
+            drop
         ELSE
+            false tmp-end-of-line !
+
             tmp-finding-width @ IF
                 1 tmp-width +!
             THEN
+
+            raw-img-buf raw-img-idx @ + C!
+            1 raw-img-idx +!
         THEN
 
         ( c-addr u c )
 
-        raw-img-buf raw-img-idx @ +
-        C!
-        1 raw-img-idx +!
-
         dup 0= \ exit if 0
     UNTIL
+
+    tmp-end-of-line @ IF \ Remove trailing newline
+        -1 tmp-height +!
+    THEN
 
     2drop  ( PlayerImg )
     dup height
@@ -99,7 +110,7 @@ variable tmp-width
 
     ( PlayerImg )
 
-    dup img-addr @
+    img-addr @
     raw-img-buf swap
     tmp-height @ tmp-width @ *
     move ; \ copy data from buffer to player

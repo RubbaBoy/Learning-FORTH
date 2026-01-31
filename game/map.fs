@@ -95,7 +95,7 @@ pack-size 1 swap lshift 1- constant pack-mask
         map-width 0 DO
         dup
         I J
-        get-map-addr-at C@ EMIT 32 EMIT
+        get-map-addr-at C@ EMIT \ 32 EMIT
         LOOP
         CR
     LOOP
@@ -162,8 +162,6 @@ variable tmp-map-y
     ( c-addr u1 fileid -- u2 ior ) read-file throw map-len-buf !
     fileid close-file throw ;
 
-\ : read-map-field ( c-addr u -- f ) \ returns if successful
-
 : read-map ( file-name -- x y map-addr )
     read-map-file
     map-data-buf
@@ -172,11 +170,6 @@ variable tmp-map-y
     consume-number -rot
 
     new-map-data ;
-
-\ Now you can use the data later in your program
-: print-config
-    map-data-buf
-    map-len-buf @ type ;
 
 : set-current-map ( mx my -- )
     2dup
