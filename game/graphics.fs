@@ -1,7 +1,5 @@
 require player.fs
-
-10 constant height
-10 constant width
+require map.fs
 
 1 constant key-up
 2 constant key-down
@@ -15,6 +13,8 @@ require player.fs
 98 constant key-quit
 99 constant key-ctrl
 0 constant key-unknown
+
+variable screen-buffer map-bytes allot
 
 \ ==== Printing ====
 
@@ -59,45 +59,52 @@ require player.fs
 
 : reset-lines
     \ Make space for the game
-    height 0 DO
+    map-height 0 DO
         CR
     LOOP
     ;
 
-: print-line ( y -- )
-    13 EMIT
+\ : print-line ( y -- )
+\     13 EMIT
+\
+\     \ TODO: More advanced player renderer, obviously
+\
+\     player-y @ = IF \ player is here
+\         width 0 DO
+\             player-x @
+\             I = IF
+\                 ." @"
+\             ELSE
+\                 ." ."
+\             THEN
+\         LOOP
+\     ELSE
+\         width 0 DO ." ." LOOP
+\     THEN
+\     ;
 
-    \ TODO: More advanced player renderer, obviously
-
-    player-y @ = IF \ player is here
-        width 0 DO
-            player-x @
-            I = IF
-                ." @"
-            ELSE
-                ." ."
-            THEN
-        LOOP
-    ELSE
-        width 0 DO ." ." LOOP
-    THEN
+: reset-draw-buffer ( -- )
+    active-map map-addr @
+    screen-buffer
+    map-bytes
+    \ ." Should be ( addr1 addr2 u ): "
+    \ .s CR
+    ( addr1 addr2 u -- )
+    move \ copy data
     ;
 
-: print-lines ( -- )
-    height 0 DO
-        I print-line
-        1 move-cursor-down
-    LOOP
-    drop
+: render-screen
+    reset-draw-buffer
+
+    screen-buffer draw-player
+
+    map-height move-cursor-up
+
+    screen-buffer print-map
     ;
 
 : 3rot ( n1 n2 n3 -- n3 n2 n1 )
     -rot swap ;
-
-: quit-game ( -- )
-    ." Quitting..."
-    bye
-    ;
 
 : check-game-key ( w c -- w' k ) \ takes a key, returns `key-` var. w -
                               \ 0 = no ctrl, treat as normal char
@@ -148,15 +155,18 @@ require player.fs
     ENDCASE
     ;
 
-: render-screen ( -- true true ) true true ;
+\ Loop ops
+: render-screen> ( -- true true ) true true ;
+: pick-key-again> ( -- false ) false ;
+: quit-game> ( -- ) ." Quitting..." bye ;
 
-: pick-key-again ( -- false ) false ;
-
-: balls
+: start
+    init-maps
     reset-lines
 
-    height move-cursor-up
-    height print-lines
+    \ height move-cursor-up
+    \ height print-lines
+    render-screen
 
     BEGIN
         0 \ w
@@ -168,28 +178,26 @@ require player.fs
             over
 
             dup 3 = IF \ is arrow
-                \ ." Handle arrow: "
-
                 drop ( w k )
 
                 CASE
                     key-up OF move-player-up ENDOF
                     key-down OF move-player-down ENDOF
                     key-right OF move-player-right ENDOF
-                    key-left OF  move-player-left ENDOF
+                    key-left OF move-player-left ENDOF
                 ENDCASE
 
                 \ drop
                 0 \ reset w
-                render-screen \ exit loop, reprint screen
+                render-screen> \ exit loop, reprint screen
             ELSE ( w k w )
                 0 > IF
-                    drop pick-key-again ( w false ) \ keep loop going if expecting another char
+                    drop pick-key-again> ( w false ) \ keep loop going if expecting another char
                 ELSE
                     CASE
-                        key-quit OF ( ." key-quit" ) CR quit-game ENDOF
-                        key-space OF ( ." key-space" ) CR render-screen ENDOF
-                        key-unknown OF ( ." key-unknown" ) CR pick-key-again ENDOF \ TODO: Dont see a key-unknown message
+                        key-quit OF ( ." key-quit" ) CR quit-game> ENDOF
+                        key-space OF ( ." key-space" ) CR render-screen> ENDOF
+                        key-unknown OF ( ." key-unknown" ) CR pick-key-again> ENDOF \ TODO: Dont see a key-unknown message
                     ENDCASE
                 THEN
             THEN
@@ -197,31 +205,9 @@ require player.fs
 
     WHILE
         \ ." Rendering screen... " CR
-        height move-cursor-up
-        print-lines
+        \ height move-cursor-up
+        render-screen
     REPEAT
     ;
 
-: start
-    reset-lines
-
-    height move-cursor-up
-    height print-lines
-
-    BEGIN
-        KEY
-        dup [CHAR] q = IF
-            ." Quitting..."
-            EXIT
-        THEN
-        KEY KEY
-        dup
-    WHILE
-        char-to-number
-        IF \ valid num
-            height move-cursor-up
-            print-lines
-        THEN
-    REPEAT
-    KEY
-    ;
+start

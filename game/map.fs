@@ -1,12 +1,25 @@
+require structs.fs
+require str-utils.fs
+
 \ : my-word
 \    [ s" data.txt" slurp-file ] 2literal ( compiled as constants )
 \    type ;
 
 33 CONSTANT MAP-HEADER-LENGTH \ Row for coords with newline
-32 CONSTANT MAP-WIDTH
-32 CONSTANT MAP-HEIGHT
+32 CONSTANT map-width
+32 CONSTANT map-height
 
-MAP-WIDTH MAP-HEIGHT * MAP-HEIGHT + MAP-HEADER-LENGTH + CONSTANT map-bytes  \ total bytes the file of a map should be (with newlines)
+map-width map-height * map-height + MAP-HEADER-LENGTH + CONSTANT map-bytes  \ total bytes the file of a map should be (with newlines)
+
+container ActiveMap
+    | mx
+    | my
+    | map-addr
+;container
+
+ActiveMap new active-map
+
+variable buffer-map-addr 0 ,
 
 \ ==== Storing maps ====
 
@@ -70,18 +83,18 @@ pack-size 1 swap lshift 1- constant pack-mask
 \  3 |3 7 11 15
 
 : make-map-array ( -- map-addr )
-    here MAP-WIDTH MAP-HEIGHT * allot ;
+    here map-width map-height * allot ;
 
 : get-map-addr-at ( map-addr x y -- coord-addr )
     swap ( map-addr y x )
-    MAP-HEIGHT * ( map-addr y col-index )
+    map-height * ( map-addr y col-index )
     + + ; ( coord-addr )
 
 : print-map ( map-addr -- )
-    MAP-HEIGHT 0 DO
-        MAP-WIDTH 0 DO
+    map-height 0 DO
+        map-width 0 DO
         dup
-        J I
+        I J
         get-map-addr-at C@ EMIT 32 EMIT
         LOOP
         CR
@@ -89,18 +102,10 @@ pack-size 1 swap lshift 1- constant pack-mask
     drop
     ;
 
-: consume-and-increment-char ( c-addr u -- c-addr' u' c )
-    swap dup C@  ( u c-addr c )
-    -rot     ( c u c-addr )
-    char+    ( c u c-addr' )
-    swap 1 - ( c c-addr' u' )
-    rot      ( c-addr' u' c )
-    ;
-
 : consume-newline-or-abort ( c-addr u -- c-addr' u' )
     swap
     dup C@ 10 = INVERT IF
-        ." Expected newline at the end of " MAP-WIDTH .
+        ." Expected newline at the end of " map-width .
         ." characters on line " J . CR
         ABORT
     THEN
@@ -116,8 +121,8 @@ pack-size 1 swap lshift 1- constant pack-mask
     -rot
     ( map-addr c-addr u )
 
-    MAP-HEIGHT 0 DO
-        MAP-WIDTH 0 DO
+    map-height 0 DO
+        map-width 0 DO
         \ CR
 
         dup 0= IF
@@ -130,7 +135,7 @@ pack-size 1 swap lshift 1- constant pack-mask
         ( map-addr c-addr' u' c )
 
         3 pick ( map-addr c-addr' u' c map-addr )
-        J I
+        I J
         get-map-addr-at C!
         ( map-addr c-addr' u' )
         LOOP
@@ -138,8 +143,7 @@ pack-size 1 swap lshift 1- constant pack-mask
         consume-newline-or-abort
     LOOP
 
-    rot
-    print-map ;
+    2drop ;
 
 \ ==== Reading maps ====
 
@@ -158,35 +162,49 @@ variable tmp-map-y
     ( c-addr u1 fileid -- u2 ior ) read-file throw map-len-buf !
     fileid close-file throw ;
 
-: consume-number ( c-addr u -- c-addr' u' n )  \ n - the parsed number
-    0. 2swap >number
-    1 /string
-    2swap d>s
-    ;
-
 \ : read-map-field ( c-addr u -- f ) \ returns if successful
 
-: READ-MAP ( file-name -- )
+: read-map ( file-name -- x y map-addr )
     read-map-file
-    map-data-buf map-len-buf @  \ Need @ to fetch actual length
+    map-data-buf
+    map-len-buf @  \ Need @ to fetch actual length
     consume-number -rot
     consume-number -rot
 
-    new-map-data
-
-    \ TODO: REMOVE
-    \ 2swap \ bring x, y to front for displaying
-    \ swap
-
-    ." Map is at (" . ." , " . ." )" CR
-
-    ;
-
-\ Execute this immediately during compilation
-s" map.txt" READ-MAP
-
-
+    new-map-data ;
 
 \ Now you can use the data later in your program
 : print-config
-    map-data-buf map-len-buf @ type ;
+    map-data-buf
+    map-len-buf @ type ;
+
+: set-current-map ( mx my -- )
+    2dup
+    find-map ( map-addr )
+    dup INVERT IF
+        swap
+        ABORT" Could not find map at (" . ." ," . ." )"
+    THEN
+
+    ." ( my my map-addr ) => " .s CR
+
+    active-map map-addr !
+    active-map my !
+    active-map mx !
+
+    ." Active map:" CR
+    ." x = " active-map mx ? CR
+    ." y = " active-map my ? CR
+    ." map-addr =" active-map map-addr ? CR
+    ;
+
+: init-maps
+    s" maps/map.txt" read-map
+
+    0 0 find-map ( map-addr )
+    dup INVERT IF
+        ABORT" Could not find map at (0, 0)"
+    THEN
+
+    0 0 set-current-map
+    ;
