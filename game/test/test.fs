@@ -82,7 +82,7 @@ pack-size 1 swap lshift 1- constant pack-mask
         MAP-WIDTH 0 DO
         dup
         J I
-        get-map-addr-at C@ EMIT
+        get-map-addr-at C@ EMIT 32 EMIT
         LOOP
         CR
     LOOP
@@ -180,7 +180,6 @@ variable tmp-map-y
 
     ." Map is at (" . ." , " . ." )" CR
 
-    ." after: " .s CR
     ;
 
 \ Execute this immediately during compilation

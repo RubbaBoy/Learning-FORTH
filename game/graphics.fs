@@ -1,3 +1,5 @@
+require player.fs
+
 10 constant height
 10 constant width
 
@@ -34,6 +36,10 @@
     [CHAR] 0 +
     ;
 
+: emit-number ( n -- )
+    0 .r
+    ;
+
 : ascii-ctrl
     27 EMIT  \ ESC
     [CHAR] [ EMIT
@@ -41,13 +47,13 @@
 
 : move-cursor-up ( n -- )
     ascii-ctrl
-    number-to-char EMIT
+    emit-number
     [CHAR] A EMIT
     ;
 
 : move-cursor-down ( n -- )
     ascii-ctrl
-    number-to-char EMIT
+    emit-number
     [CHAR] B EMIT
     ;
 
@@ -60,15 +66,21 @@
 
 : print-line ( y -- )
     13 EMIT
-    width 0 DO
-        dup
-        I = IF
-            ." @"
-        ELSE
-            ." ."
-        THEN
-    LOOP
-    DROP
+
+    \ TODO: More advanced player renderer, obviously
+
+    player-y @ = IF \ player is here
+        width 0 DO
+            player-x @
+            I = IF
+                ." @"
+            ELSE
+                ." ."
+            THEN
+        LOOP
+    ELSE
+        width 0 DO ." ." LOOP
+    THEN
     ;
 
 : print-lines ( -- )
@@ -82,51 +94,9 @@
 : 3rot ( n1 n2 n3 -- n3 n2 n1 )
     -rot swap ;
 
-\ : dup-and-reverse-ctrl-input ( n1 n2 n3 -- n1 n2 n3 n1' n2' n3' )
-\     dup ( n1 n2 n3 -- n1 n2 n3 n3' )
-\     2 pick ( n1 n2 n3 -- n1 n2 n3 n3' n2' )
-\     4 pick
-\     ;
-
-\ : key-to-direction ( n n n - direction f ) \ direction constant, f valid direction
-\     3rot
-\     .s CR
-\     27 = \ is ESC
-\     >r   \ store result
-\     91 = \ is [
-\     r> AND \ if it's a control sequence
-\
-\     INVERT IF \ invalid
-\         ." first"
-\         drop false
-\         EXIT
-\     THEN
-\
-\     \ is arrow key
-\     \ dup 65 >= >r
-\     \ dup 68 <= r> AND
-\
-\     ." before within: " .s CR
-\
-\     dup 65 69 WITHIN
-\
-\     INVERT IF
-\         ." second"
-\         drop false
-\         EXIT
-\     THEN
-\
-\     65 -
-\     true
-\     ;
-
 : quit-game ( -- )
     ." Quitting..."
     bye
-    ;
-
-: is-arrow?
-
     ;
 
 : check-game-key ( w c -- w' k ) \ takes a key, returns `key-` var. w -
@@ -183,6 +153,11 @@
 : pick-key-again ( -- false ) false ;
 
 : balls
+    reset-lines
+
+    height move-cursor-up
+    height print-lines
+
     BEGIN
         0 \ w
 
@@ -193,17 +168,16 @@
             over
 
             dup 3 = IF \ is arrow
-                ." Handle arrow: "
+                \ ." Handle arrow: "
 
                 drop ( w k )
 
                 CASE
-                    key-up OF ." up" ENDOF
-                    key-down OF ." down" ENDOF
-                    key-right OF ." right" ENDOF
-                    key-left OF ." left" ENDOF
+                    key-up OF move-player-up ENDOF
+                    key-down OF move-player-down ENDOF
+                    key-right OF move-player-right ENDOF
+                    key-left OF  move-player-left ENDOF
                 ENDCASE
-                CR
 
                 \ drop
                 0 \ reset w
@@ -213,16 +187,18 @@
                     drop pick-key-again ( w false ) \ keep loop going if expecting another char
                 ELSE
                     CASE
-                        key-quit OF ." key-quit" CR quit-game ENDOF
-                        key-space OF ." key-space" CR render-screen ENDOF
-                        key-unknown OF ." key-unknown" CR pick-key-again ENDOF \ TODO: Dont see a key-unknown message
+                        key-quit OF ( ." key-quit" ) CR quit-game ENDOF
+                        key-space OF ( ." key-space" ) CR render-screen ENDOF
+                        key-unknown OF ( ." key-unknown" ) CR pick-key-again ENDOF \ TODO: Dont see a key-unknown message
                     ENDCASE
                 THEN
             THEN
         UNTIL
 
     WHILE
-        ." Rendering screen... " CR
+        \ ." Rendering screen... " CR
+        height move-cursor-up
+        print-lines
     REPEAT
     ;
 
@@ -249,12 +225,3 @@
     REPEAT
     KEY
     ;
-
-\ ." Up: "
-\ KEY KEY KEY . . . CR
-\ ." Down: "
-\ KEY KEY KEY . . . CR
-\ ." Left: "
-\ KEY KEY KEY . . . CR
-\ ." Right: "
-\ KEY KEY KEY . . . CR
