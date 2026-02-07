@@ -1,12 +1,13 @@
 require structs.fs
 require str-utils.fs
+require output.fs
 
 \ : my-word
 \    [ s" data.txt" slurp-file ] 2literal ( compiled as constants )
 \    type ;
 
 33 CONSTANT MAP-HEADER-LENGTH \ Row for coords with newline
-32 CONSTANT map-width
+96 CONSTANT map-width
 32 CONSTANT map-height
 
 map-width map-height * map-height + MAP-HEADER-LENGTH + CONSTANT map-bytes  \ total bytes the file of a map should be (with newlines)
@@ -60,7 +61,7 @@ pack-size 1 swap lshift 1- constant pack-mask
         dup
     WHILE
         dup cell+ @ \ get key from current
-        2 pick \ get 3rd value down, i.e. ( *packed-coords* map-link packed-coords' )
+        over \ get 3rd value down, i.e. ( *packed-coords* map-link packed-coords' )
         = IF
             nip \ remove packed-coords, only map-link remains
             2 cells + @ \ get the map-addr for this entry
@@ -179,16 +180,16 @@ variable tmp-map-y
         ABORT" Could not find map at (" . ." ," . ." )"
     THEN
 
-    ." ( my my map-addr ) => " .s CR
-
     active-map map-addr !
     active-map my !
     active-map mx !
 
-    ." Active map:" CR
-    ." x = " active-map mx ? CR
-    ." y = " active-map my ? CR
-    ." map-addr =" active-map map-addr ? CR
+    verbose IF
+        ." Active map:" CR
+        ." x = " active-map mx ? CR
+        ." y = " active-map my ? CR
+        ." map-addr =" active-map map-addr ? CR
+    THEN
     ;
 
 : init-maps

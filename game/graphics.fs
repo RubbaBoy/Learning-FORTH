@@ -83,7 +83,7 @@ variable screen-buffer map-bytes allot
 \     THEN
 \     ;
 
-: reset-draw-buffer ( -- )
+: reset-screen-buffer ( -- )
     active-map map-addr @
     screen-buffer
     map-bytes
@@ -94,7 +94,11 @@ variable screen-buffer map-bytes allot
     ;
 
 : render-screen
-    reset-draw-buffer
+    \ Must be done before the screen buffer, as this modifies the map itself
+    \ which is used to reset the draw buffer. This does NOT modify the screen buffer
+    check-player-beer
+
+    reset-screen-buffer
 
     screen-buffer draw-player
 
@@ -168,14 +172,15 @@ variable screen-buffer map-bytes allot
     \ height print-lines
     render-screen
 
+    0 \ w
+
     BEGIN
-        0 \ w
 
         BEGIN
             KEY
-            check-game-key
+            check-game-key ( w k )
 
-            over
+            over ( w k w )
 
             dup 3 = IF \ is arrow
                 drop ( w k )
@@ -187,7 +192,7 @@ variable screen-buffer map-bytes allot
                     key-left OF move-player-left ENDOF
                 ENDCASE
 
-                \ drop
+                drop \ remove w, it's set at the outer loop
                 0 \ reset w
                 render-screen> \ exit loop, reprint screen
             ELSE ( w k w )

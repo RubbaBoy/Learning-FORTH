@@ -1,5 +1,6 @@
 require structs.fs
 require str-utils.fs
+require output.fs
 
 container PlayerImg
     | width
@@ -22,6 +23,8 @@ container PlayerImg
 
 PlayerImg new player-img-left
 PlayerImg new player-img-right
+PlayerImg new player-img-left-beer
+PlayerImg new player-img-right-beer
 
 255 constant player-img-buf-size
 variable player-img-len-buf
@@ -57,6 +60,7 @@ variable tmp-width
     1 tmp-height !
     0 tmp-width !
     0 raw-img-idx !
+    raw-img-buf 255 erase
 
     player-img-data-buf
     player-img-len-buf @
@@ -118,12 +122,22 @@ variable tmp-width
 : init-all-players
     player-img-right s" players/player-right.txt" init-player
     player-img-left s" players/player-left.txt" init-player
-
-    ." Right player:" CR
-    player-img-right dump-player
-
-    ." Left player:" CR
-    player-img-left dump-player
+    player-img-right-beer s" players/player-right-beer.txt" init-player
+    player-img-left-beer s" players/player-left-beer.txt" init-player
+    
+    verbose IF
+        ." === Right player:" CR
+        player-img-right dump-player
+    
+        ." === Left player:" CR
+        player-img-left dump-player
+    
+        ." === Left player (w/ beer):" CR
+        player-img-left-beer dump-player
+    
+        ." === Right player (w/ beer):" CR
+        player-img-right-beer dump-player
+    THEN
     ;
 
 init-all-players

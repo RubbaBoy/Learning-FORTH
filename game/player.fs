@@ -1,5 +1,6 @@
 require map.fs
 require player-loader.fs
+require beer.fs
 
 variable player-x
 variable player-y
@@ -21,6 +22,9 @@ variable player-bounds-y-max 9 ,
 
 variable tmp-player-img-idx
 
+variable player-moved
+false player-moved !
+
 : to-global-coords ( rx ry -- gx gy ) \ relative x, y to global;
     player-y @ +
     swap
@@ -31,23 +35,34 @@ variable tmp-player-img-idx
 
 : current-player-img ( -- PlayerImg )
     player-last-direction @ player-right = IF
-        player-img-right
+        holding-beer @ IF
+            player-img-right-beer
+        ELSE
+            player-img-right
+        THEN
     ELSE
-        player-img-left
+        holding-beer @ IF
+            player-img-left-beer
+        ELSE
+            player-img-left
+        THEN
     THEN ;
 
-: valid-position? ( x y -- f )
+: get-player-bounds ( x y -- img x2 x1 y2 y1 )
     current-player-img -rot ( img x y )
 
-    2dup swap ( x1 y1 y1 x1 )
+    2dup swap ( img x1 y1 y1 x1 )
 
     4 pick
-    width @ + ( x1 y1 y1 x2 )
+    width @ + ( img x1 y1 y1 x2 )
     swap
-    4 pick height @ + ( x1 x2 y2 y1 )
-    rot ( x1 x2 y2 y1 )
+    4 pick height @ + ( img x1 x2 y2 y1 )
+    rot ( img x1 x2 y2 y1 )
 
-    2swap swap 2swap ( x2 x1 y2 y1 )
+    2swap swap 2swap ; ( img x2 x1 y2 y1 )
+
+: valid-position? ( x y -- f )
+    get-player-bounds
 
     DO ( x1 x2 )
         2dup
@@ -55,7 +70,7 @@ variable tmp-player-img-idx
             active-map map-addr @
             I J get-map-addr-at C@
 
-            [CHAR] # = IF
+            32 = INVERT IF
                 2drop drop
                 unloop unloop
                 false
@@ -67,38 +82,87 @@ variable tmp-player-img-idx
     2drop drop
     true ;
 
+: is-on-beer? ( -- [x y] f ) \ if f=true, x and y are present. If f=false, no x, y are provided
+    player-x @
+    player-y @
+    get-player-bounds ( img x2 x1 y2 y1 )
+    2swap swap ( img y2 y1 x1 x2 )
+    1 - \ beer is 1 wide, so don't check the far right column
+    ( img y2 y1 x1 x2-1 )
+    swap 2swap
+    ( img x2 x1 y2 y1 )
+
+    DO
+        2dup
+        ( img x2 x1 x2 x1 )
+        DO
+            ( img x2 x1 )
+            I J is-beer? IF
+                2drop \ drop x1 x2
+                drop \ img
+                I J true
+                unloop unloop
+                exit
+            THEN
+        LOOP
+    LOOP
+
+    2drop
+    drop \ img
+    false
+    ;
+
 : move-player-up ( -- )
     player-y @
     1 -
-    player-x @ over valid-position? IF player-y ! ELSE drop THEN ;
+    player-x @ over valid-position? IF
+        player-y !
+        true player-moved !
+    ELSE drop THEN ;
 
 : move-player-down ( -- )
     player-y @
     1 +
-    player-x @ over valid-position? IF player-y ! ELSE drop THEN ;
+    player-x @ over valid-position? IF
+        player-y !
+        true player-moved !
+    ELSE drop THEN ;
 
 : move-player-left  ( -- )
     player-left player-last-direction !
     player-x @
     1 -
     dup player-y @ ( x x y )
-    valid-position? IF player-x ! ELSE drop THEN ;
+    valid-position? IF
+        player-x !
+        true player-moved !
+    ELSE drop THEN ;
 
 : move-player-right  ( -- )
     player-right player-last-direction !
     player-x @
     1 +
-    dup player-y @ valid-position? IF player-x ! ELSE drop THEN ;
+    dup player-y @ valid-position? IF
+        player-x !
+        true player-moved !
+    ELSE drop THEN ;
+
+: check-player-beer ( -- )
+    player-moved @ IF
+        holding-beer @ INVERT IF
+            \ if not holding a beer: CHECK
+            is-on-beer? IF
+                true holding-beer !
+                remove-beer
+            THEN
+        THEN
+    THEN
+    false player-moved !
+
+    exit
+    ;
 
 : draw-player ( buffer-address -- )
-    \ map-bytes dump
-
-    \  /--|
-    \  |@@|
-    \  \^ /
-    \  / | \
-    \   /\
-
     0 tmp-player-img-idx !
 
     current-player-img
@@ -111,7 +175,7 @@ variable tmp-player-img-idx
             dup img-addr @
             tmp-player-img-idx @ + C@
 
-            ( map-buf player-img c )
+            ( map-buf PlayerImg c )
 
             dup 32 = IF \ if space, ignore
                 drop
@@ -131,4 +195,6 @@ variable tmp-player-img-idx
             1 tmp-player-img-idx +!
         LOOP
     LOOP
+
+    2drop
     ;
