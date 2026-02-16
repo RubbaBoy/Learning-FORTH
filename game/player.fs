@@ -1,6 +1,7 @@
 require map.fs
 require player-loader.fs
 require beer.fs
+require fridge.fs
 
 variable player-x
 variable player-y
@@ -62,16 +63,25 @@ false player-moved !
     2swap swap 2swap ; ( img x2 x1 y2 y1 )
 
 : valid-position? ( x y -- f )
+\    ." valid-pos: " .s CR
     get-player-bounds
 
     DO ( x1 x2 )
         2dup
         DO
+\            ." 111:" .s CR
             active-map map-addr @
             I J get-map-addr-at C@
 
-            32 = INVERT IF
-                2drop drop
+\            ." 222 (with char): " .s CR
+            32 = ( f ) \ is a space
+\             ." 333: " .s CR
+            
+             I J is-beer? ( f ) \ is a beer
+            or INVERT \ is space OR beer
+            
+            IF
+                2drop drop \ second drop is for img
                 unloop unloop
                 false
                 EXIT
@@ -87,7 +97,7 @@ false player-moved !
     player-y @
     get-player-bounds ( img x2 x1 y2 y1 )
     2swap swap ( img y2 y1 x1 x2 )
-    1 - \ beer is 1 wide, so don't check the far right column
+    \ 1 - \ beer is 1 wide, so don't check the far right column
     ( img y2 y1 x1 x2-1 )
     swap 2swap
     ( img x2 x1 y2 y1 )
@@ -110,6 +120,43 @@ false player-moved !
     2drop
     drop \ img
     false
+    ;
+
+: in-current-fridge ( x y -- f )
+    active-map fridge-addr @ ( x y fridge-addr )
+    -rot ( fridge-addr x y )
+    in-fridge ( f )
+    ;
+
+: sub-or-zero ( n -- n' ) \ subtracts 1 if n is >0
+    dup 0> IF 1 - THEN ;
+
+: next-to-fridge? ( -- f ) \ checks if the player is horizontally next to the fridge
+    player-x @ player-y @ get-player-bounds ( img x2 x1 y2 y1 )
+    \ extend X one left and one right
+    2swap ( img y2 y1 x2 x1 )
+    sub-or-zero swap
+    1 + swap
+    2swap ( img x2' x1' y2 y1 )
+    
+    DO
+        2dup ( img x2' x1' x2' x1' )
+        
+        I ( img x2' x1' x2' x1' y )
+        in-current-fridge IF
+            2drop 2drop unloop true
+            exit
+        THEN
+        ( img x2 x1' x2' )
+        
+        I ( img x2' x1' x2' y )
+        in-current-fridge IF
+            2drop drop unloop true
+            exit
+        THEN
+        ( img x2' x1' )
+    LOOP
+    2drop drop false
     ;
 
 : move-player-up ( -- )
@@ -147,13 +194,21 @@ false player-moved !
         true player-moved !
     ELSE drop THEN ;
 
-: check-player-beer ( -- )
+: check-player-pos ( -- )
     player-moved @ IF
         holding-beer @ INVERT IF
             \ if not holding a beer: CHECK
             is-on-beer? IF
                 true holding-beer !
                 remove-beer
+            THEN
+        ELSE \ only check fridge if they moved and are holding a beer
+            next-to-fridge? IF
+                false holding-beer !
+                
+                active-map map-addr @
+                active-map fridge-addr @
+                add-beer
             THEN
         THEN
     THEN

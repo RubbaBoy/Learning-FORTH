@@ -1,14 +1,8 @@
 require structs.fs
 require str-utils.fs
 require output.fs
-
-\ : my-word
-\    [ s" data.txt" slurp-file ] 2literal ( compiled as constants )
-\    type ;
-
-33 CONSTANT MAP-HEADER-LENGTH \ Row for coords with newline
-96 CONSTANT map-width
-32 CONSTANT map-height
+require map-storage.fs
+require fridge.fs
 
 map-width map-height * map-height + MAP-HEADER-LENGTH + CONSTANT map-bytes  \ total bytes the file of a map should be (with newlines)
 
@@ -16,6 +10,7 @@ container ActiveMap
     | mx
     | my
     | map-addr
+    | fridge-addr \ only support one fridge per map for now. 0 if no fridge.
 ;container
 
 ActiveMap new active-map
@@ -71,25 +66,6 @@ pack-size 1 swap lshift 1- constant pack-mask
     REPEAT
     nip \ remove key if not found, will return the map-link of 0
     ;
-
-
-\ ==== Creating maps ====
-
-\     cols
-\     0 1 2  3
-\     --------
-\  0 |0 4 8  12
-\  1 |1 5 9  13
-\  2 |2 6 10 14
-\  3 |3 7 11 15
-
-: make-map-array ( -- map-addr )
-    here map-width map-height * allot ;
-
-: get-map-addr-at ( map-addr x y -- coord-addr )
-    swap ( map-addr y x )
-    map-height * ( map-addr y col-index )
-    + + ; ( coord-addr )
 
 : print-map ( map-addr -- )
     map-height 0 DO
@@ -183,6 +159,11 @@ variable tmp-map-y
     active-map map-addr !
     active-map my !
     active-map mx !
+    0 active-map fridge-addr ! \ set no fridge addr
+    
+    active-map map-addr @
+    find-fridge
+    active-map fridge-addr !
 
     verbose IF
         ." Active map:" CR

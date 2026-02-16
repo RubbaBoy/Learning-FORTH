@@ -96,7 +96,7 @@ variable screen-buffer map-bytes allot
 : render-screen
     \ Must be done before the screen buffer, as this modifies the map itself
     \ which is used to reset the draw buffer. This does NOT modify the screen buffer
-    check-player-beer
+    check-player-pos
 
     reset-screen-buffer
 
