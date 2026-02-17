@@ -70,9 +70,8 @@ map-height fridge-height - constant fridge-map-scan-height
     ;
 
 : find-fridge ( map-addr -- fridge-addr|0 )
-    ." Scanning width: " fridge-map-scan-width . CR
-    ." Scanning height: " fridge-map-scan-height . CR
-    .s
+    \ ." Scanning width: " fridge-map-scan-width . CR
+    \ ." Scanning height: " fridge-map-scan-height . CR
     
     fridge-map-scan-height 0 DO
         fridge-map-scan-width 0 DO

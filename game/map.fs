@@ -56,7 +56,7 @@ pack-size 1 swap lshift 1- constant pack-mask
         dup
     WHILE
         dup cell+ @ \ get key from current
-        over \ get 3rd value down, i.e. ( *packed-coords* map-link packed-coords' )
+        2 pick \ get 3rd value down, i.e. ( *packed-coords* map-link packed-coords' )
         = IF
             nip \ remove packed-coords, only map-link remains
             2 cells + @ \ get the map-addr for this entry
@@ -151,11 +151,12 @@ variable tmp-map-y
 : set-current-map ( mx my -- )
     2dup
     find-map ( map-addr )
-    dup INVERT IF
+    dup 0 = IF
         swap
-        ABORT" Could not find map at (" . ." ," . ." )"
+        ." Could not find map at (" . ." ," . ." )"
+        ABORT
     THEN
-
+    
     active-map map-addr !
     active-map my !
     active-map mx !
@@ -174,11 +175,12 @@ variable tmp-map-y
     ;
 
 : init-maps
-    s" maps/map.txt" read-map
-
+    s" maps/map.txt" read-map add-map
+    
     0 0 find-map ( map-addr )
-    dup INVERT IF
-        ABORT" Could not find map at (0, 0)"
+    dup 0 = IF
+        ." Could not find map at (0, 0)"
+        ABORT
     THEN
 
     0 0 set-current-map
